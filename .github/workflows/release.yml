@@ -1,0 +1,71 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    name: Build Linux Release Binary
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config \
+            libasound2-dev \
+            libpipewire-0.3-dev \
+            libspa-0.2-dev \
+            libwayland-dev \
+            libegl1-mesa-dev \
+            libgl1-mesa-dev \
+            libxkbcommon-dev
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Prepare release artifacts
+        run: |
+          mkdir -p dist
+          cp target/release/vibe dist/vibe
+          cp target/release/vibe dist/vibe-x86_64-unknown-linux-gnu
+          strip dist/vibe
+          strip dist/vibe-x86_64-unknown-linux-gnu
+
+          # Create distribution tarball
+          tar -czvf dist/vibe-${{ github.ref_name }}-x86_64-unknown-linux-gnu.tar.gz \
+            -C dist vibe \
+            -C ../ README.md LICENSE install.sh
+
+          # Generate SHA256 checksums
+          cd dist
+          sha256sum vibe vibe-x86_64-unknown-linux-gnu *.tar.gz > SHA256SUMS.txt
+          cd ..
+
+      - name: Upload binaries to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/vibe
+            dist/vibe-x86_64-unknown-linux-gnu
+            dist/*.tar.gz
+            dist/SHA256SUMS.txt
+          generate_release_notes: true
+          draft: false
+          prerelease: false

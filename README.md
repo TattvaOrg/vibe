@@ -5,6 +5,39 @@ Directly inspired by Lumn for macOS (trylumn.xyz).
 
 ---
 
+## Direct Binary Installation
+
+Install the pre-built Linux binary directly with a single command (no compiler or package manager required):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/TattvaOrg/vibe/main/install.sh | sh
+```
+
+This installs:
+- Executable binary to `~/.local/bin/vibe`
+- Desktop entry to `~/.local/share/applications/vibe.desktop`
+- Application icon to `~/.local/share/icons/hicolor/scalable/apps/vibe.svg`
+
+---
+
+## Quick Start
+
+```bash
+# Start background ambient lighting overlay
+vibe daemon
+
+# Open the rich matte-black settings window
+vibe settings
+
+# Toggle ambient glow and tracer line on or off via keybinding
+vibe toggle
+
+# Cycle through animation modes (Orbit, Beat Pulse, Fluid Wave, Breathe, Steady)
+vibe next-mode
+```
+
+---
+
 ## Overview
 
 vibe transforms Linux displays with a fluid ambient aura that dynamically synchronizes with active music playback.
