@@ -52,17 +52,52 @@ pub fn extract_palette_from_bytes(bytes: &[u8]) -> Result<Palette> {
     })
 }
 
-/// Extract palette from a file path or URI (e.g. file:///path/to/cover.jpg).
+/// Extract palette from a file path or URI (e.g. file:///path/to/cover.jpg or https://...).
 pub fn extract_palette_from_uri(uri: &str) -> Result<Palette> {
-    if let Some(file_path) = uri.strip_prefix("file://") {
-        let bytes = std::fs::read(Path::new(file_path))
-            .with_context(|| format!("Failed to read album art at {}", file_path))?;
-        extract_palette_from_bytes(&bytes)
-    } else if uri.starts_with('/') {
-        let bytes = std::fs::read(Path::new(uri))
-            .with_context(|| format!("Failed to read album art at {}", uri))?;
-        extract_palette_from_bytes(&bytes)
-    } else {
-        anyhow::bail!("Remote HTTP cover downloads without network client not supported directly in offline mode")
+    if uri.starts_with("http://") || uri.starts_with("https://") {
+        // Fetch remote artwork with curl (standard on Linux)
+        let output = std::process::Command::new("curl")
+            .args(["-sL", "--max-time", "3", uri])
+            .output()
+            .with_context(|| format!("Failed to download remote cover art from {}", uri))?;
+
+        if output.status.success() && !output.stdout.is_empty() {
+            return extract_palette_from_bytes(&output.stdout);
+        } else {
+            anyhow::bail!("Failed to fetch cover art HTTP status: {:?}", output.status);
+        }
     }
+
+    let file_path = if let Some(stripped) = uri.strip_prefix("file://") {
+        stripped
+    } else {
+        uri
+    };
+
+    // Decode URL-encoded characters (like %20 for space)
+    let decoded_path = urlencoding_decode(file_path);
+    let bytes = std::fs::read(Path::new(&decoded_path))
+        .with_context(|| format!("Failed to read album art at {}", decoded_path))?;
+    extract_palette_from_bytes(&bytes)
+}
+
+fn urlencoding_decode(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    let mut chars = s.chars();
+    while let Some(ch) = chars.next() {
+        if ch == '%' {
+            let hex: String = chars.by_ref().take(2).collect();
+            if hex.len() == 2 {
+                if let Ok(byte) = u8::from_str_radix(&hex, 16) {
+                    result.push(byte as char);
+                    continue;
+                }
+            }
+            result.push('%');
+            result.push_str(&hex);
+        } else {
+            result.push(ch);
+        }
+    }
+    result
 }

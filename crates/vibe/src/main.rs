@@ -41,13 +41,34 @@ async fn main() -> Result<()> {
         Commands::Daemon => run_daemon(state).await?,
         Commands::Settings => {
             log::info!("Launching vibe settings application...");
+
+            // Start audio capture loopback for settings live preview
+            let state_for_audio = state.clone();
+            let _audio_capture = vibe_audio::AudioCapture::start(move |audio_state| {
+                state_for_audio.set_audio(audio_state);
+            });
+
+            // Start MPRIS watcher for settings live preview
+            let state_for_mpris = state.clone();
+            tokio::spawn(async move {
+                let watcher = vibe_mpris::MprisWatcher::new(state_for_mpris);
+                let _ = watcher.run().await;
+            });
+
             vibe_ui::run_settings_window(state)?;
         }
         Commands::Toggle => {
             let mut cfg = VibConfig::load().unwrap_or_default();
-            cfg.tracer_enabled = !cfg.tracer_enabled;
+            if cfg.tracer_enabled || cfg.glow_intensity > 0.05 {
+                cfg.tracer_enabled = false;
+                cfg.glow_intensity = 0.0;
+                log::info!("Toggled vibe state: OFF (glow_intensity=0.0, tracer=false)");
+            } else {
+                cfg.tracer_enabled = true;
+                cfg.glow_intensity = 0.7;
+                log::info!("Toggled vibe state: ON (glow_intensity=0.7, tracer=true)");
+            }
             cfg.save()?;
-            log::info!("Toggled tracer state: {}", cfg.tracer_enabled);
         }
         Commands::NextMode => {
             let mut cfg = VibConfig::load().unwrap_or_default();
@@ -72,7 +93,8 @@ async fn run_daemon(state: AppState) -> Result<()> {
     // 1. Hot-reload configuration file changes on save
     let state_for_watcher = state.clone();
     let _watcher = ConfigWatcher::start(move |new_config| {
-        log::info!("Config hot-reloaded: thickness={}", new_config.glow_thickness);
+        log::info!("Config hot-reloaded: thickness={}, intensity={}, tracer={}", 
+            new_config.glow_thickness, new_config.glow_intensity, new_config.tracer_enabled);
         state_for_watcher.set_config(new_config);
     })?;
 
