@@ -1,0 +1,11 @@
+[package]
+name = "vibe-audio"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+vibe-core = { path = "../vibe-core" }
+log = { workspace = true }
+anyhow = { workspace = true }
+rustfft = "6.2"
+cpal = "0.15"

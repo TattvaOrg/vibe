@@ -1,0 +1,16 @@
+[package]
+name = "vibe"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+vibe-core = { path = "../vibe-core" }
+vibe-audio = { path = "../vibe-audio" }
+vibe-mpris = { path = "../vibe-mpris" }
+vibe-render = { path = "../vibe-render" }
+vibe-ui = { path = "../vibe-ui" }
+clap = { version = "4", features = ["derive"] }
+tokio = { workspace = true }
+log = { workspace = true }
+env_logger = { workspace = true }
+anyhow = { workspace = true }

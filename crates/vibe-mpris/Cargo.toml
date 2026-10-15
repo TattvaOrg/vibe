@@ -1,0 +1,13 @@
+[package]
+name = "vibe-mpris"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+vibe-core = { path = "../vibe-core" }
+log = { workspace = true }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+zbus = "5"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
+color-thief = "0.2"
