@@ -71,6 +71,12 @@ export component SettingsWindow inherits Window {
     in-out property <int> tracer-style: 0; // 0=AuroraWave, 1=NeonGlow, 2=ElectricPulse
     in-out property <int> active-color-idx: 0; // 0=AlbumArt, 1..6=Presets
 
+    in-out property <bool> tracer-pause-enabled: false;
+    in-out property <float> tracer-run-length: 1.0;
+    in-out property <float> tracer-pause-duration-ms: 2500.0;
+    in-out property <bool> tracer-pause-charge-up: true;
+    in-out property <bool> tracer-pause-beat-breakout: true;
+
     in-out property <int> animation-mode: 0; // 0=Orbit, 1=BeatPulse, 2=FluidWave, 3=Breathe, 4=Steady
     in-out property <string> track-title: "No track playing";
     in-out property <string> track-artist: "Offline";
@@ -383,6 +389,107 @@ export component SettingsWindow inherits Window {
                         maximum: 1.0;
                         value: root.tracer-tail;
                         changed(val) => { root.tracer-tail = val; root.config-changed(); }
+                    }
+                }
+            }
+
+            // Controls Card: Intermittent Periodic Pause & Move
+            Rectangle {
+                background: #121214;
+                border-radius: 12px;
+                border-width: 1px;
+                border-color: #27272a;
+
+                VerticalLayout {
+                    padding: 16px;
+                    spacing: 12px;
+
+                    HorizontalLayout {
+                        alignment: space-between;
+                        VerticalLayout {
+                            spacing: 2px;
+                            Text {
+                                text: "Intermittent Periodic Pause & Move";
+                                font-size: 14px;
+                                font-weight: 600;
+                                color: #f4f4f5;
+                            }
+                            Text {
+                                text: "Pauses in place after traveling set distance, stays visible, then resumes";
+                                font-size: 11px;
+                                color: #71717a;
+                            }
+                        }
+                        Switch {
+                            checked: root.tracer-pause-enabled;
+                            toggled => { root.tracer-pause-enabled = self.checked; root.config-changed(); }
+                        }
+                    }
+
+                    if root.tracer-pause-enabled: VerticalLayout {
+                        spacing: 12px;
+
+                        // Run Length
+                        HorizontalLayout {
+                            alignment: space-between;
+                            Text { text: "Run Distance Before Pause"; color: #a1a1aa; font-size: 13px; }
+                            Text {
+                                text: Math.round(root.tracer-run-length * 100) + "% (" +
+                                      (root.tracer-run-length < 0.4 ? "1 edge" :
+                                       root.tracer-run-length < 0.8 ? "half screen" :
+                                       root.tracer-run-length < 1.4 ? "1 loop" :
+                                       Math.round(root.tracer-run-length) + " loops") + ")";
+                                color: #f4f4f5;
+                                font-size: 13px;
+                            }
+                        }
+                        Slider {
+                            minimum: 0.25;
+                            maximum: 3.0;
+                            value: root.tracer-run-length;
+                            changed(val) => { root.tracer-run-length = val; root.config-changed(); }
+                        }
+
+                        // Pause Duration in ms
+                        HorizontalLayout {
+                            alignment: space-between;
+                            Text { text: "Pause Duration (ms)"; color: #a1a1aa; font-size: 13px; }
+                            Text { text: Math.round(root.tracer-pause-duration-ms) + " ms"; color: #f4f4f5; font-size: 13px; }
+                        }
+                        Slider {
+                            minimum: 200.0;
+                            maximum: 10000.0;
+                            value: root.tracer-pause-duration-ms;
+                            changed(val) => { root.tracer-pause-duration-ms = val; root.config-changed(); }
+                        }
+
+                        // Glow Surge Charge-up toggle
+                        HorizontalLayout {
+                            alignment: space-between;
+                            VerticalLayout {
+                                spacing: 2px;
+                                Text { text: "Glow Surge Charge-up"; color: #f4f4f5; font-size: 13px; }
+                                Text { text: "Swells bloom and width gently while paused in place"; color: #71717a; font-size: 11px; }
+                            }
+                            Switch {
+                                checked: root.tracer-pause-charge-up;
+                                toggled => { root.tracer-pause-charge-up = self.checked; root.config-changed(); }
+                            }
+                        }
+
+                        // Audio Bass Breakout toggle
+                        HorizontalLayout {
+                            alignment: space-between;
+                            VerticalLayout {
+                                spacing: 2px;
+                                Text { text: "Audio Bass Breakout"; color: #f4f4f5; font-size: 13px; }
+                                Text { text: "Heavy bass drops trigger early launch from pause"; color: #71717a; font-size: 11px; }
+                            }
+                            Switch {
+                                checked: root.tracer-pause-beat-breakout;
+                                toggled => { root.tracer-pause-beat-breakout = self.checked; root.config-changed(); }
+                            }
+                        }
                     }
                 }
             }

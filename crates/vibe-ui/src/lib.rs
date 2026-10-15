@@ -21,6 +21,11 @@ pub fn run_settings_window(state: AppState) -> Result<()> {
     window.set_tracer_tail(config.tracer_tail_length);
     window.set_tracer_width(config.tracer_width);
     window.set_tracer_glow(config.tracer_glow);
+    window.set_tracer_pause_enabled(config.tracer_pause_enabled);
+    window.set_tracer_run_length(config.tracer_run_length);
+    window.set_tracer_pause_duration_ms(config.tracer_pause_duration_ms as f32);
+    window.set_tracer_pause_charge_up(config.tracer_pause_charge_up);
+    window.set_tracer_pause_beat_breakout(config.tracer_pause_beat_breakout);
 
     window.set_tracer_direction(match config.tracer_direction {
         TracerDirection::Clockwise => 0,
@@ -150,6 +155,11 @@ pub fn run_settings_window(state: AppState) -> Result<()> {
             cfg.tracer_tail_length = w.get_tracer_tail();
             cfg.tracer_width = w.get_tracer_width();
             cfg.tracer_glow = w.get_tracer_glow();
+            cfg.tracer_pause_enabled = w.get_tracer_pause_enabled();
+            cfg.tracer_run_length = w.get_tracer_run_length();
+            cfg.tracer_pause_duration_ms = w.get_tracer_pause_duration_ms() as u32;
+            cfg.tracer_pause_charge_up = w.get_tracer_pause_charge_up();
+            cfg.tracer_pause_beat_breakout = w.get_tracer_pause_beat_breakout();
 
             state_clone.set_config(cfg.clone());
             let _ = cfg.save();

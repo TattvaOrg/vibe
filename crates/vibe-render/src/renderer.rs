@@ -7,6 +7,13 @@ use vibe_core::types::{AnimationMode, AudioState, Palette, TracerDirection, Trac
 
 use crate::shader::{compile_shader, link_program, FRAGMENT_SHADER_SRC, VERTEX_SHADER_SRC};
 
+/// Kinetic motion phase for periodic intermittent movement.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum MotionPhase {
+    Moving { distance_traveled: f32 },
+    Paused { elapsed_secs: f32, duration_secs: f32 },
+}
+
 /// Fullscreen GPU overlay renderer using OpenGL / GLSL.
 pub struct OverlayRenderer {
     gl: glow::Context,
@@ -14,6 +21,7 @@ pub struct OverlayRenderer {
     vao: glow::VertexArray,
     _vbo: glow::Buffer,
     tracer_position: f32,
+    motion_phase: MotionPhase,
     last_frame: Instant,
     start_time: Instant,
 }
@@ -67,6 +75,7 @@ impl OverlayRenderer {
                 vao,
                 _vbo: vbo,
                 tracer_position: 0.0,
+                motion_phase: MotionPhase::Moving { distance_traveled: 0.0 },
                 last_frame: Instant::now(),
                 start_time: Instant::now(),
             })
@@ -87,16 +96,80 @@ impl OverlayRenderer {
         self.last_frame = now;
         let elapsed = now.duration_since(self.start_time).as_secs_f32();
 
-        // Advance tracer beam along the perimeter according to direction
+        // Advance tracer beam along the perimeter according to direction and pause mode
         let beat_multiplier = 1.0 + (audio.bass_energy * 1.5);
-        let speed = (config.tracer_speed * 0.25) * beat_multiplier;
-        match config.tracer_direction {
-            TracerDirection::Clockwise => {
-                self.tracer_position = (self.tracer_position + speed * dt).fract();
+        let base_speed = (config.tracer_speed * 0.25) * beat_multiplier;
+
+        let mut pause_glow_boost = 0.0f32;
+        let mut pause_width_boost = 0.0f32;
+
+        if config.tracer_pause_enabled {
+            let run_target = config.tracer_run_length.max(0.05);
+            let pause_duration = (config.tracer_pause_duration_ms as f32 / 1000.0).max(0.1);
+
+            match self.motion_phase {
+                MotionPhase::Moving { ref mut distance_traveled } => {
+                    let progress = (*distance_traveled / run_target).clamp(0.0, 1.0);
+
+                    // Smooth kinetic easing: gentle acceleration on start, deceleration before pause
+                    let accel = (progress / 0.15).clamp(0.12, 1.0);
+                    let decel = ((1.0 - progress) / 0.15).clamp(0.08, 1.0);
+                    let speed_factor = accel.min(decel);
+
+                    let effective_speed = base_speed * speed_factor;
+                    let step = effective_speed * dt;
+                    *distance_traveled += step;
+
+                    match config.tracer_direction {
+                        TracerDirection::Clockwise => {
+                            self.tracer_position = (self.tracer_position + step).fract();
+                        }
+                        TracerDirection::CounterClockwise => {
+                            self.tracer_position = (self.tracer_position - step).rem_euclid(1.0);
+                        }
+                    }
+
+                    if *distance_traveled >= run_target {
+                        self.motion_phase = MotionPhase::Paused {
+                            elapsed_secs: 0.0,
+                            duration_secs: pause_duration,
+                        };
+                    }
+                }
+                MotionPhase::Paused { ref mut elapsed_secs, duration_secs } => {
+                    // Position is frozen in place; tracer stays fully visible and breathes!
+                    // Check Audio Bass Breakout: strong bass transient can trigger breakout
+                    if config.tracer_pause_beat_breakout && audio.beat && audio.bass_energy > 0.40 {
+                        *elapsed_secs += 0.4;
+                    }
+
+                    *elapsed_secs += dt;
+                    let pause_progress = (*elapsed_secs / duration_secs).clamp(0.0, 1.0);
+
+                    // Glow surge charge-up: subtle swelling breath while waiting
+                    if config.tracer_pause_charge_up {
+                        let pulse = (pause_progress * std::f32::consts::PI).sin();
+                        pause_glow_boost = pulse * 0.35;
+                        pause_width_boost = pulse * 3.0;
+                    }
+
+                    if *elapsed_secs >= duration_secs {
+                        self.motion_phase = MotionPhase::Moving { distance_traveled: 0.0 };
+                    }
+                }
             }
-            TracerDirection::CounterClockwise => {
-                self.tracer_position = (self.tracer_position - speed * dt).rem_euclid(1.0);
+        } else {
+            // Normal continuous movement
+            let step = base_speed * dt;
+            match config.tracer_direction {
+                TracerDirection::Clockwise => {
+                    self.tracer_position = (self.tracer_position + step).fract();
+                }
+                TracerDirection::CounterClockwise => {
+                    self.tracer_position = (self.tracer_position - step).rem_euclid(1.0);
+                }
             }
+            self.motion_phase = MotionPhase::Moving { distance_traveled: 0.0 };
         }
 
         unsafe {
@@ -131,8 +204,11 @@ impl OverlayRenderer {
                 TracerDirection::CounterClockwise => 1,
             };
             self.set_uniform_1i("u_tracer_direction", dir_val);
-            self.set_uniform_1f("u_tracer_width", config.tracer_width);
-            self.set_uniform_1f("u_tracer_glow", config.tracer_glow);
+
+            let effective_width = (config.tracer_width + pause_width_boost).clamp(1.0, 32.0);
+            let effective_glow = (config.tracer_glow + pause_glow_boost).clamp(0.0, 1.5);
+            self.set_uniform_1f("u_tracer_width", effective_width);
+            self.set_uniform_1f("u_tracer_glow", effective_glow);
 
             let style_val = match config.tracer_style {
                 TracerStyle::AuroraWave => 0,

@@ -56,6 +56,26 @@ pub struct VibConfig {
     #[serde(default = "default_preset_color_index")]
     pub preset_color_index: u32,
 
+    /// Whether periodic pause and move mode is enabled.
+    #[serde(default = "default_tracer_pause_enabled")]
+    pub tracer_pause_enabled: bool,
+
+    /// Distance to travel before taking a pause (in screen perimeter laps, 0.25 to 3.0).
+    #[serde(default = "default_tracer_run_length")]
+    pub tracer_run_length: f32,
+
+    /// Duration of the pause in milliseconds (100ms to 10000ms).
+    #[serde(default = "default_tracer_pause_duration_ms")]
+    pub tracer_pause_duration_ms: u32,
+
+    /// Whether the tracer pulses with a charging bloom surge while paused.
+    #[serde(default = "default_tracer_pause_charge_up")]
+    pub tracer_pause_charge_up: bool,
+
+    /// Whether heavy bass beats can trigger an energetic launch breakout during pause.
+    #[serde(default = "default_tracer_pause_beat_breakout")]
+    pub tracer_pause_beat_breakout: bool,
+
     /// Beat-detection sensitivity preset.
     #[serde(default)]
     pub beat_sensitivity: BeatSensitivity,
@@ -114,6 +134,11 @@ fn default_tracer_width() -> f32 { 6.0 }
 fn default_tracer_glow() -> f32 { 0.7 }
 fn default_tracer_style() -> TracerStyle { TracerStyle::AuroraWave }
 fn default_preset_color_index() -> u32 { 0 }
+fn default_tracer_pause_enabled() -> bool { false }
+fn default_tracer_run_length() -> f32 { 1.0 }
+fn default_tracer_pause_duration_ms() -> u32 { 2500 }
+fn default_tracer_pause_charge_up() -> bool { true }
+fn default_tracer_pause_beat_breakout() -> bool { true }
 fn default_primary_color() -> [f32; 3] { [0.4, 0.2, 0.8] }
 fn default_secondary_color() -> [f32; 3] { [0.2, 0.6, 0.9] }
 fn default_color_weight() -> f32 { 0.6 }
@@ -137,6 +162,11 @@ impl Default for VibConfig {
             tracer_glow: default_tracer_glow(),
             tracer_style: default_tracer_style(),
             preset_color_index: default_preset_color_index(),
+            tracer_pause_enabled: default_tracer_pause_enabled(),
+            tracer_run_length: default_tracer_run_length(),
+            tracer_pause_duration_ms: default_tracer_pause_duration_ms(),
+            tracer_pause_charge_up: default_tracer_pause_charge_up(),
+            tracer_pause_beat_breakout: default_tracer_pause_beat_breakout(),
             beat_sensitivity: BeatSensitivity::default(),
             animation_mode: AnimationMode::default(),
             color_source: ColorSource::default(),
