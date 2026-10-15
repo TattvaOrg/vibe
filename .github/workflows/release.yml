@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+      - 'vibe-v*'
   workflow_dispatch:
 
 permissions:
@@ -29,7 +30,9 @@ jobs:
             libwayland-dev \
             libegl1-mesa-dev \
             libgl1-mesa-dev \
-            libxkbcommon-dev
+            libxkbcommon-dev \
+            libfontconfig1-dev \
+            libx11-dev
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
