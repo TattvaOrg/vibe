@@ -30,6 +30,23 @@ impl Default for AnimationMode {
     }
 }
 
+/// Visual texture / rendering style of the moving tracer line.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum TracerStyle {
+    #[default]
+    AuroraWave,
+    NeonGlow,
+    ElectricPulse,
+}
+
+/// Orbit direction along the screen perimeter.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum TracerDirection {
+    #[default]
+    Clockwise,
+    CounterClockwise,
+}
+
 /// Where the palette colours come from.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ColorSource {
