@@ -154,62 +154,12 @@ smithay_client_toolkit::delegate_output!(VibeWaylandState);
 smithay_client_toolkit::delegate_layer!(VibeWaylandState);
 smithay_client_toolkit::delegate_registry!(VibeWaylandState);
 
-/// Dynamically loaded libwayland-client functions to avoid link-time errors.
-struct WaylandClientDynamic {
-    _lib: libloading::Library,
-    disconnect: unsafe extern "C" fn(*mut std::ffi::c_void),
-    display_ptr: *mut std::ffi::c_void,
-}
-
-impl WaylandClientDynamic {
-    fn try_connect() -> Option<Self> {
-        let lib_names = ["libwayland-client.so.0", "libwayland-client.so"];
-        for name in lib_names {
-            if let Ok(lib) = unsafe { libloading::Library::new(name) } {
-                let connect_fn: Result<
-                    libloading::Symbol<unsafe extern "C" fn(*const std::ffi::c_char) -> *mut std::ffi::c_void>,
-                    _,
-                > = unsafe { lib.get(b"wl_display_connect\0") };
-
-                let disconnect_fn: Result<
-                    libloading::Symbol<unsafe extern "C" fn(*mut std::ffi::c_void)>,
-                    _,
-                > = unsafe { lib.get(b"wl_display_disconnect\0") };
-
-                if let (Ok(connect), Ok(disconnect)) = (connect_fn, disconnect_fn) {
-                    let ptr = unsafe { connect(std::ptr::null()) };
-                    if !ptr.is_null() {
-                        let disconnect_fn_ptr = *disconnect;
-                        return Some(Self {
-                            _lib: lib,
-                            disconnect: disconnect_fn_ptr,
-                            display_ptr: ptr,
-                        });
-                    }
-                }
-            }
-        }
-        None
-    }
-}
-
-impl Drop for WaylandClientDynamic {
-    fn drop(&mut self) {
-        if !self.display_ptr.is_null() {
-            unsafe {
-                (self.disconnect)(self.display_ptr);
-            }
-        }
-    }
-}
-
 /// Manages the Wayland display, layer-shell surface, and EGL context.
 pub struct WaylandOverlay {
     egl_instance: Arc<egl::DynamicInstance<egl::EGL1_4>>,
     egl_display: egl::Display,
     egl_context: egl::Context,
     egl_surface: egl::Surface,
-    _dynamic_client: Option<WaylandClientDynamic>,
     _wl_egl_surface: Option<WlEglSurface>,
     _layer_surface: Option<LayerSurface>,
     event_queue: Option<wayland_client::EventQueue<VibeWaylandState>>,
@@ -228,11 +178,12 @@ impl WaylandOverlay {
         };
         let egl_instance = Arc::new(egl_instance);
 
-        // Dynamically connect to Wayland display socket if available
-        let dynamic_client = WaylandClientDynamic::try_connect();
+        // Connect to Wayland environment using single Connection
+        let conn_opt = Connection::connect_to_env().ok();
 
-        let egl_display = if let Some(ref client) = dynamic_client {
-            unsafe { egl_instance.get_display(client.display_ptr as *mut _) }
+        let egl_display = if let Some(ref conn) = conn_opt {
+            let ptr = conn.backend().display_ptr() as *mut std::ffi::c_void;
+            unsafe { egl_instance.get_display(ptr) }
                 .context("Failed to get EGL display for Wayland")?
         } else {
             unsafe { egl_instance.get_display(egl::DEFAULT_DISPLAY) }
@@ -284,14 +235,14 @@ impl WaylandOverlay {
             .create_context(egl_display, config, None, &context_attribs)
             .map_err(|e| anyhow::anyhow!("Failed to create EGL context: {:?}", e))?;
 
-        // Try creating Wayland Layer Shell surface via high-level Connection
+        // Try creating Wayland Layer Shell surface via the same Connection
         let mut created_layer = None;
         let mut created_wl_egl = None;
         let mut created_egl_surface = None;
         let mut created_queue = None;
         let mut created_state = None;
 
-        if let Ok(conn) = Connection::connect_to_env() {
+        if let Some(conn) = conn_opt {
             let (globals, mut event_queue) =
                 wayland_client::globals::registry_queue_init::<VibeWaylandState>(&conn)
                     .map_err(|e| anyhow::anyhow!("Wayland registry init failed: {:?}", e))?;
@@ -409,7 +360,6 @@ impl WaylandOverlay {
             egl_display,
             egl_context,
             egl_surface,
-            _dynamic_client: dynamic_client,
             _wl_egl_surface: created_wl_egl,
             _layer_surface: created_layer,
             event_queue: created_queue,

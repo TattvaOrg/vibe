@@ -9,7 +9,7 @@ log = { workspace = true }
 anyhow = { workspace = true }
 glow = "0.16"
 khronos-egl = { version = "6", features = ["dynamic"] }
-wayland-client = "0.31"
+wayland-client = { version = "0.31", features = ["system"] }
 wayland-protocols = { version = "0.32", features = ["client"] }
 wayland-protocols-wlr = { version = "0.3", features = ["client"] }
 smithay-client-toolkit = { version = "0.19", features = ["calloop"] }
