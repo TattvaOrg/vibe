@@ -24,6 +24,31 @@ pub fn run_settings_window(state: AppState) -> Result<()> {
         window.set_track_artist(media.artist.into());
     }
 
+    // Dynamic timer to keep track metadata and audio status synchronized in real time
+    let timer = slint::Timer::default();
+    let state_for_timer = state.clone();
+    let window_handle_timer = window.as_weak();
+    timer.start(slint::TimerMode::Repeated, std::time::Duration::from_millis(200), move || {
+        if let Some(w) = window_handle_timer.upgrade() {
+            let m = state_for_timer.media();
+            let a = state_for_timer.audio();
+
+            if m.playing {
+                w.set_track_title(m.title.into());
+                w.set_track_artist(if m.artist.is_empty() { "Media Player".into() } else { m.artist.into() });
+            } else if !m.title.is_empty() {
+                w.set_track_title(format!("[Paused] {}", m.title).into());
+                w.set_track_artist(if m.artist.is_empty() { "Media Player".into() } else { m.artist.into() });
+            } else if a.energy > 0.02 {
+                w.set_track_title("Active Audio Stream".into());
+                w.set_track_artist("PipeWire Audio Capture".into());
+            } else {
+                w.set_track_title("No track playing".into());
+                w.set_track_artist("Offline".into());
+            }
+        }
+    });
+
     let state_clone = state.clone();
     let window_handle = window.as_weak();
 
