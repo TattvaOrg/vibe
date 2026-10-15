@@ -1,0 +1,201 @@
+import { Slider, Button, Switch } from "std-widgets.slint";
+
+export component SettingsWindow inherits Window {
+    title: "vibe — Ambient Lighting";
+    preferred-width: 680px;
+    preferred-height: 780px;
+    background: #09090b;
+
+    in-out property <float> glow-thickness: 40.0;
+    in-out property <float> glow-diffusion: 0.5;
+    in-out property <float> glow-intensity: 0.7;
+    in-out property <bool> tracer-enabled: true;
+    in-out property <float> tracer-speed: 1.0;
+    in-out property <float> tracer-tail: 0.4;
+    in-out property <int> animation-mode: 0; // 0=Orbit, 1=BeatPulse, 2=FluidWave, 3=Breathe, 4=Steady
+    in-out property <string> track-title: "No track playing";
+    in-out property <string> track-artist: "Offline";
+
+    callback config-changed();
+    callback close-window();
+
+    VerticalLayout {
+        padding: 24px;
+        spacing: 16px;
+
+        // Header Title
+        HorizontalLayout {
+            alignment: space-between;
+            VerticalLayout {
+                spacing: 2px;
+                Text {
+                    text: "vibe";
+                    font-size: 22px;
+                    font-weight: 700;
+                    color: #f4f4f5;
+                }
+                Text {
+                    text: "Fluid Ambient Aura & Curved Contour Orbit for Linux";
+                    font-size: 12px;
+                    color: #71717a;
+                }
+            }
+        }
+
+        // Live Preview Box (Display Squircle Simulation)
+        Rectangle {
+            height: 160px;
+            background: #0d0d10;
+            border-radius: 12px;
+            border-width: 1px;
+            border-color: #27272a;
+
+            // Simulated Display Edge Glow
+            Rectangle {
+                width: 480px;
+                height: 120px;
+                border-radius: 24px;
+                border-width: 3px;
+                border-color: #6366f1;
+                background: transparent;
+
+                // Center Live Status
+                VerticalLayout {
+                    alignment: center;
+                    spacing: 4px;
+                    Text {
+                        horizontal-alignment: center;
+                        text: root.track-title;
+                        font-size: 14px;
+                        font-weight: 600;
+                        color: #f4f4f5;
+                    }
+                    Text {
+                        horizontal-alignment: center;
+                        text: root.track-artist;
+                        font-size: 12px;
+                        color: #a1a1aa;
+                    }
+                }
+            }
+        }
+
+        // Controls Card 1: Ambient Aura Dial
+        Rectangle {
+            background: #121214;
+            border-radius: 12px;
+            border-width: 1px;
+            border-color: #27272a;
+
+            VerticalLayout {
+                padding: 16px;
+                spacing: 12px;
+
+                Text {
+                    text: "Ambient Aura Glow";
+                    font-size: 14px;
+                    font-weight: 600;
+                    color: #f4f4f5;
+                }
+
+                HorizontalLayout {
+                    alignment: space-between;
+                    Text { text: "Glow Thickness (px)"; color: #a1a1aa; font-size: 13px; }
+                    Text { text: Math.round(root.glow-thickness) + "px"; color: #f4f4f5; font-size: 13px; }
+                }
+                Slider {
+                    minimum: 1.0;
+                    maximum: 120.0;
+                    value: root.glow-thickness;
+                    changed(val) => { root.glow-thickness = val; root.config-changed(); }
+                }
+
+                HorizontalLayout {
+                    alignment: space-between;
+                    Text { text: "Diffusion / Spread"; color: #a1a1aa; font-size: 13px; }
+                    Text { text: Math.round(root.glow-diffusion * 100) + "%"; color: #f4f4f5; font-size: 13px; }
+                }
+                Slider {
+                    minimum: 0.05;
+                    maximum: 1.0;
+                    value: root.glow-diffusion;
+                    changed(val) => { root.glow-diffusion = val; root.config-changed(); }
+                }
+
+                HorizontalLayout {
+                    alignment: space-between;
+                    Text { text: "Brightness Intensity"; color: #a1a1aa; font-size: 13px; }
+                    Text { text: Math.round(root.glow-intensity * 100) + "%"; color: #f4f4f5; font-size: 13px; }
+                }
+                Slider {
+                    minimum: 0.1;
+                    maximum: 1.0;
+                    value: root.glow-intensity;
+                    changed(val) => { root.glow-intensity = val; root.config-changed(); }
+                }
+            }
+        }
+
+        // Controls Card 2: White Perimeter Tracer Beam
+        Rectangle {
+            background: #121214;
+            border-radius: 12px;
+            border-width: 1px;
+            border-color: #27272a;
+
+            VerticalLayout {
+                padding: 16px;
+                spacing: 12px;
+
+                HorizontalLayout {
+                    alignment: space-between;
+                    Text {
+                        text: "White Perimeter Tracer Beam";
+                        font-size: 14px;
+                        font-weight: 600;
+                        color: #f4f4f5;
+                    }
+                    Switch {
+                        checked: root.tracer-enabled;
+                        toggled => { root.tracer-enabled = self.checked; root.config-changed(); }
+                    }
+                }
+
+                HorizontalLayout {
+                    alignment: space-between;
+                    Text { text: "Orbit Velocity"; color: #a1a1aa; font-size: 13px; }
+                    Text { text: Math.round(root.tracer-speed * 100) + "%"; color: #f4f4f5; font-size: 13px; }
+                }
+                Slider {
+                    minimum: 0.2;
+                    maximum: 3.0;
+                    value: root.tracer-speed;
+                    changed(val) => { root.tracer-speed = val; root.config-changed(); }
+                }
+
+                HorizontalLayout {
+                    alignment: space-between;
+                    Text { text: "Comet Tail Length"; color: #a1a1aa; font-size: 13px; }
+                    Text { text: Math.round(root.tracer-tail * 100) + "%"; color: #f4f4f5; font-size: 13px; }
+                }
+                Slider {
+                    minimum: 0.1;
+                    maximum: 1.0;
+                    value: root.tracer-tail;
+                    changed(val) => { root.tracer-tail = val; root.config-changed(); }
+                }
+            }
+        }
+
+        // Footer Actions
+        HorizontalLayout {
+            alignment: end;
+            spacing: 12px;
+
+            Button {
+                text: "Apply & Close";
+                clicked => { root.close-window(); }
+            }
+        }
+    }
+}

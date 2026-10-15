@@ -1,0 +1,16 @@
+[package]
+name = "vibe-render"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+vibe-core = { path = "../vibe-core" }
+log = { workspace = true }
+anyhow = { workspace = true }
+glow = "0.16"
+khronos-egl = { version = "6", features = ["dynamic"] }
+wayland-client = "0.31"
+wayland-protocols = { version = "0.32", features = ["client"] }
+wayland-protocols-wlr = { version = "0.3", features = ["client"] }
+smithay-client-toolkit = { version = "0.19", features = ["calloop"] }
+raw-window-handle = "0.6"
