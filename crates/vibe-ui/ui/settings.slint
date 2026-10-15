@@ -1,200 +1,457 @@
-import { Slider, Button, Switch } from "std-widgets.slint";
+import { Slider, Button, Switch, ScrollView } from "std-widgets.slint";
+
+component ChoicePill inherits Rectangle {
+    in property <string> text;
+    in property <bool> active;
+    callback clicked();
+
+    background: active ? #6366f1 : #18181b;
+    border-radius: 8px;
+    border-width: 1px;
+    border-color: active ? #818cf8 : #27272a;
+    height: 32px;
+
+    TouchArea {
+        clicked => { root.clicked(); }
+    }
+
+    Text {
+        text: root.text;
+        color: root.active ? #ffffff : #a1a1aa;
+        font-size: 12px;
+        font-weight: root.active ? 600 : 400;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
+
+component ColorChip inherits Rectangle {
+    in property <color> chip-color;
+    in property <bool> active;
+    in property <string> label: "";
+    callback clicked();
+
+    width: 30px;
+    height: 30px;
+    border-radius: 15px;
+    background: root.chip-color;
+    border-width: root.active ? 3px : 1px;
+    border-color: root.active ? #ffffff : #3f3f46;
+
+    TouchArea {
+        clicked => { root.clicked(); }
+    }
+
+    Text {
+        text: root.label;
+        font-size: 11px;
+        font-weight: 700;
+        color: #ffffff;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
 
 export component SettingsWindow inherits Window {
     title: "vibe — Ambient Lighting";
-    preferred-width: 680px;
-    preferred-height: 780px;
+    preferred-width: 660px;
+    preferred-height: 720px;
     background: #09090b;
 
     in-out property <float> glow-thickness: 40.0;
     in-out property <float> glow-diffusion: 0.5;
     in-out property <float> glow-intensity: 0.7;
+
     in-out property <bool> tracer-enabled: true;
     in-out property <float> tracer-speed: 1.0;
     in-out property <float> tracer-tail: 0.4;
+    in-out property <float> tracer-width: 6.0;
+    in-out property <float> tracer-glow: 0.7;
+    in-out property <int> tracer-direction: 0; // 0=Clockwise, 1=CounterClockwise
+    in-out property <int> tracer-style: 0; // 0=AuroraWave, 1=NeonGlow, 2=ElectricPulse
+    in-out property <int> active-color-idx: 0; // 0=AlbumArt, 1..6=Presets
+
     in-out property <int> animation-mode: 0; // 0=Orbit, 1=BeatPulse, 2=FluidWave, 3=Breathe, 4=Steady
     in-out property <string> track-title: "No track playing";
     in-out property <string> track-artist: "Offline";
 
     callback config-changed();
+    callback direction-changed(int);
+    callback style-changed(int);
+    callback color-selected(int);
     callback close-window();
 
-    VerticalLayout {
-        padding: 24px;
-        spacing: 16px;
+    ScrollView {
+        VerticalLayout {
+            padding: 20px;
+            spacing: 16px;
 
-        // Header Title
-        HorizontalLayout {
-            alignment: space-between;
-            VerticalLayout {
-                spacing: 2px;
-                Text {
-                    text: "vibe";
-                    font-size: 22px;
-                    font-weight: 700;
-                    color: #f4f4f5;
-                }
-                Text {
-                    text: "Fluid Ambient Aura & Curved Contour Orbit for Linux";
-                    font-size: 12px;
-                    color: #71717a;
-                }
-            }
-        }
-
-        // Live Preview Box (Display Squircle Simulation)
-        Rectangle {
-            height: 160px;
-            background: #0d0d10;
-            border-radius: 12px;
-            border-width: 1px;
-            border-color: #27272a;
-
-            // Simulated Display Edge Glow
-            Rectangle {
-                width: 480px;
-                height: 120px;
-                border-radius: 24px;
-                border-width: 3px;
-                border-color: #6366f1;
-                background: transparent;
-
-                // Center Live Status
+            // Header Title
+            HorizontalLayout {
+                alignment: space-between;
                 VerticalLayout {
-                    alignment: center;
-                    spacing: 4px;
+                    spacing: 2px;
                     Text {
-                        horizontal-alignment: center;
-                        text: root.track-title;
-                        font-size: 14px;
-                        font-weight: 600;
+                        text: "vibe";
+                        font-size: 22px;
+                        font-weight: 700;
                         color: #f4f4f5;
                     }
                     Text {
-                        horizontal-alignment: center;
-                        text: root.track-artist;
+                        text: "Fluid Ambient Aura & Curved Contour Orbit for Linux";
                         font-size: 12px;
-                        color: #a1a1aa;
+                        color: #71717a;
                     }
                 }
             }
-        }
 
-        // Controls Card 1: Ambient Aura Dial
-        Rectangle {
-            background: #121214;
-            border-radius: 12px;
-            border-width: 1px;
-            border-color: #27272a;
+            // Live Preview Box (Display Squircle Simulation)
+            Rectangle {
+                height: 130px;
+                background: #0d0d10;
+                border-radius: 12px;
+                border-width: 1px;
+                border-color: #27272a;
 
-            VerticalLayout {
-                padding: 16px;
-                spacing: 12px;
+                // Simulated Display Edge Glow
+                Rectangle {
+                    width: 460px;
+                    height: 96px;
+                    border-radius: 20px;
+                    border-width: clamp(root.tracer-width * 0.4, 2.0, 8.0) * 1px;
+                    border-color: root.active-color-idx == 1 ? #00f5a0 :
+                                  root.active-color-idx == 2 ? #00d4ff :
+                                  root.active-color-idx == 3 ? #a855f7 :
+                                  root.active-color-idx == 4 ? #3b82f6 :
+                                  root.active-color-idx == 5 ? #ff5252 :
+                                  root.active-color-idx == 6 ? #ffffff : #6366f1;
+                    background: transparent;
 
-                Text {
-                    text: "Ambient Aura Glow";
-                    font-size: 14px;
-                    font-weight: 600;
-                    color: #f4f4f5;
-                }
-
-                HorizontalLayout {
-                    alignment: space-between;
-                    Text { text: "Glow Thickness (px)"; color: #a1a1aa; font-size: 13px; }
-                    Text { text: Math.round(root.glow-thickness) + "px"; color: #f4f4f5; font-size: 13px; }
-                }
-                Slider {
-                    minimum: 1.0;
-                    maximum: 120.0;
-                    value: root.glow-thickness;
-                    changed(val) => { root.glow-thickness = val; root.config-changed(); }
-                }
-
-                HorizontalLayout {
-                    alignment: space-between;
-                    Text { text: "Diffusion / Spread"; color: #a1a1aa; font-size: 13px; }
-                    Text { text: Math.round(root.glow-diffusion * 100) + "%"; color: #f4f4f5; font-size: 13px; }
-                }
-                Slider {
-                    minimum: 0.05;
-                    maximum: 1.0;
-                    value: root.glow-diffusion;
-                    changed(val) => { root.glow-diffusion = val; root.config-changed(); }
-                }
-
-                HorizontalLayout {
-                    alignment: space-between;
-                    Text { text: "Brightness Intensity"; color: #a1a1aa; font-size: 13px; }
-                    Text { text: Math.round(root.glow-intensity * 100) + "%"; color: #f4f4f5; font-size: 13px; }
-                }
-                Slider {
-                    minimum: 0.1;
-                    maximum: 1.0;
-                    value: root.glow-intensity;
-                    changed(val) => { root.glow-intensity = val; root.config-changed(); }
+                    // Center Live Status
+                    VerticalLayout {
+                        alignment: center;
+                        spacing: 4px;
+                        Text {
+                            horizontal-alignment: center;
+                            text: root.track-title;
+                            font-size: 14px;
+                            font-weight: 600;
+                            color: #f4f4f5;
+                        }
+                        Text {
+                            horizontal-alignment: center;
+                            text: root.track-artist;
+                            font-size: 12px;
+                            color: #a1a1aa;
+                        }
+                    }
                 }
             }
-        }
 
-        // Controls Card 2: White Perimeter Tracer Beam
-        Rectangle {
-            background: #121214;
-            border-radius: 12px;
-            border-width: 1px;
-            border-color: #27272a;
+            // Palette Swatches Card
+            Rectangle {
+                background: #121214;
+                border-radius: 12px;
+                border-width: 1px;
+                border-color: #27272a;
 
-            VerticalLayout {
-                padding: 16px;
-                spacing: 12px;
+                VerticalLayout {
+                    padding: 16px;
+                    spacing: 12px;
 
-                HorizontalLayout {
-                    alignment: space-between;
+                    HorizontalLayout {
+                        alignment: space-between;
+                        Text {
+                            text: "Color Palette";
+                            font-size: 14px;
+                            font-weight: 600;
+                            color: #f4f4f5;
+                        }
+                        Text {
+                            text: root.active-color-idx == 0 ? "Album Art Dynamic" :
+                                  root.active-color-idx == 1 ? "Arctic Emerald" :
+                                  root.active-color-idx == 2 ? "Cyan Plasma" :
+                                  root.active-color-idx == 3 ? "Cyber Violet" :
+                                  root.active-color-idx == 4 ? "Electric Blue" :
+                                  root.active-color-idx == 5 ? "Sunset Coral" : "Pure White";
+                            font-size: 12px;
+                            color: #a1a1aa;
+                        }
+                    }
+
+                    HorizontalLayout {
+                        spacing: 12px;
+                        alignment: start;
+
+                        ColorChip {
+                            chip-color: #6366f1;
+                            active: root.active-color-idx == 0;
+                            label: "A";
+                            clicked => {
+                                root.active-color-idx = 0;
+                                root.color-selected(0);
+                                root.config-changed();
+                            }
+                        }
+                        ColorChip {
+                            chip-color: #00f5a0;
+                            active: root.active-color-idx == 1;
+                            clicked => {
+                                root.active-color-idx = 1;
+                                root.color-selected(1);
+                                root.config-changed();
+                            }
+                        }
+                        ColorChip {
+                            chip-color: #00d4ff;
+                            active: root.active-color-idx == 2;
+                            clicked => {
+                                root.active-color-idx = 2;
+                                root.color-selected(2);
+                                root.config-changed();
+                            }
+                        }
+                        ColorChip {
+                            chip-color: #a855f7;
+                            active: root.active-color-idx == 3;
+                            clicked => {
+                                root.active-color-idx = 3;
+                                root.color-selected(3);
+                                root.config-changed();
+                            }
+                        }
+                        ColorChip {
+                            chip-color: #3b82f6;
+                            active: root.active-color-idx == 4;
+                            clicked => {
+                                root.active-color-idx = 4;
+                                root.color-selected(4);
+                                root.config-changed();
+                            }
+                        }
+                        ColorChip {
+                            chip-color: #ff5252;
+                            active: root.active-color-idx == 5;
+                            clicked => {
+                                root.active-color-idx = 5;
+                                root.color-selected(5);
+                                root.config-changed();
+                            }
+                        }
+                        ColorChip {
+                            chip-color: #ffffff;
+                            active: root.active-color-idx == 6;
+                            clicked => {
+                                root.active-color-idx = 6;
+                                root.color-selected(6);
+                                root.config-changed();
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Moving Line & Tracer Controls Card
+            Rectangle {
+                background: #121214;
+                border-radius: 12px;
+                border-width: 1px;
+                border-color: #27272a;
+
+                VerticalLayout {
+                    padding: 16px;
+                    spacing: 12px;
+
+                    HorizontalLayout {
+                        alignment: space-between;
+                        Text {
+                            text: "Moving Line & Tracer Controls";
+                            font-size: 14px;
+                            font-weight: 600;
+                            color: #f4f4f5;
+                        }
+                        Switch {
+                            checked: root.tracer-enabled;
+                            toggled => { root.tracer-enabled = self.checked; root.config-changed(); }
+                        }
+                    }
+
+                    // Texture / Style Selection
+                    Text { text: "Line Texture Effect"; color: #a1a1aa; font-size: 13px; }
+                    HorizontalLayout {
+                        spacing: 8px;
+                        ChoicePill {
+                            text: "Aurora Wave";
+                            active: root.tracer-style == 0;
+                            clicked => {
+                                root.tracer-style = 0;
+                                root.style-changed(0);
+                                root.config-changed();
+                            }
+                        }
+                        ChoicePill {
+                            text: "Neon Glow";
+                            active: root.tracer-style == 1;
+                            clicked => {
+                                root.tracer-style = 1;
+                                root.style-changed(1);
+                                root.config-changed();
+                            }
+                        }
+                        ChoicePill {
+                            text: "Electric Pulse";
+                            active: root.tracer-style == 2;
+                            clicked => {
+                                root.tracer-style = 2;
+                                root.style-changed(2);
+                                root.config-changed();
+                            }
+                        }
+                    }
+
+                    // Direction Selection
+                    Text { text: "Orbit Direction"; color: #a1a1aa; font-size: 13px; }
+                    HorizontalLayout {
+                        spacing: 8px;
+                        ChoicePill {
+                            text: "Clockwise";
+                            active: root.tracer-direction == 0;
+                            clicked => {
+                                root.tracer-direction = 0;
+                                root.direction-changed(0);
+                                root.config-changed();
+                            }
+                        }
+                        ChoicePill {
+                            text: "Counter-Clockwise";
+                            active: root.tracer-direction == 1;
+                            clicked => {
+                                root.tracer-direction = 1;
+                                root.direction-changed(1);
+                                root.config-changed();
+                            }
+                        }
+                    }
+
+                    // Line Width
+                    HorizontalLayout {
+                        alignment: space-between;
+                        Text { text: "Line Width / Thickness"; color: #a1a1aa; font-size: 13px; }
+                        Text { text: Math.round(root.tracer-width) + "px"; color: #f4f4f5; font-size: 13px; }
+                    }
+                    Slider {
+                        minimum: 1.0;
+                        maximum: 24.0;
+                        value: root.tracer-width;
+                        changed(val) => { root.tracer-width = val; root.config-changed(); }
+                    }
+
+                    // Line Glow / Bloom
+                    HorizontalLayout {
+                        alignment: space-between;
+                        Text { text: "Line Glow / Bloom Intensity"; color: #a1a1aa; font-size: 13px; }
+                        Text { text: Math.round(root.tracer-glow * 100) + "%"; color: #f4f4f5; font-size: 13px; }
+                    }
+                    Slider {
+                        minimum: 0.0;
+                        maximum: 1.0;
+                        value: root.tracer-glow;
+                        changed(val) => { root.tracer-glow = val; root.config-changed(); }
+                    }
+
+                    // Orbit Velocity
+                    HorizontalLayout {
+                        alignment: space-between;
+                        Text { text: "Orbit Velocity"; color: #a1a1aa; font-size: 13px; }
+                        Text { text: Math.round(root.tracer-speed * 100) + "%"; color: #f4f4f5; font-size: 13px; }
+                    }
+                    Slider {
+                        minimum: 0.2;
+                        maximum: 3.0;
+                        value: root.tracer-speed;
+                        changed(val) => { root.tracer-speed = val; root.config-changed(); }
+                    }
+
+                    // Comet Tail Length
+                    HorizontalLayout {
+                        alignment: space-between;
+                        Text { text: "Comet Tail Length"; color: #a1a1aa; font-size: 13px; }
+                        Text { text: Math.round(root.tracer-tail * 100) + "%"; color: #f4f4f5; font-size: 13px; }
+                    }
+                    Slider {
+                        minimum: 0.1;
+                        maximum: 1.0;
+                        value: root.tracer-tail;
+                        changed(val) => { root.tracer-tail = val; root.config-changed(); }
+                    }
+                }
+            }
+
+            // Controls Card: Ambient Aura Dial
+            Rectangle {
+                background: #121214;
+                border-radius: 12px;
+                border-width: 1px;
+                border-color: #27272a;
+
+                VerticalLayout {
+                    padding: 16px;
+                    spacing: 12px;
+
                     Text {
-                        text: "White Perimeter Tracer Beam";
+                        text: "Display Edge Aura Glow";
                         font-size: 14px;
                         font-weight: 600;
                         color: #f4f4f5;
                     }
-                    Switch {
-                        checked: root.tracer-enabled;
-                        toggled => { root.tracer-enabled = self.checked; root.config-changed(); }
+
+                    HorizontalLayout {
+                        alignment: space-between;
+                        Text { text: "Glow Thickness (px)"; color: #a1a1aa; font-size: 13px; }
+                        Text { text: Math.round(root.glow-thickness) + "px"; color: #f4f4f5; font-size: 13px; }
+                    }
+                    Slider {
+                        minimum: 1.0;
+                        maximum: 120.0;
+                        value: root.glow-thickness;
+                        changed(val) => { root.glow-thickness = val; root.config-changed(); }
+                    }
+
+                    HorizontalLayout {
+                        alignment: space-between;
+                        Text { text: "Diffusion / Spread"; color: #a1a1aa; font-size: 13px; }
+                        Text { text: Math.round(root.glow-diffusion * 100) + "%"; color: #f4f4f5; font-size: 13px; }
+                    }
+                    Slider {
+                        minimum: 0.05;
+                        maximum: 1.0;
+                        value: root.glow-diffusion;
+                        changed(val) => { root.glow-diffusion = val; root.config-changed(); }
+                    }
+
+                    HorizontalLayout {
+                        alignment: space-between;
+                        Text { text: "Brightness Intensity"; color: #a1a1aa; font-size: 13px; }
+                        Text { text: Math.round(root.glow-intensity * 100) + "%"; color: #f4f4f5; font-size: 13px; }
+                    }
+                    Slider {
+                        minimum: 0.0;
+                        maximum: 1.0;
+                        value: root.glow-intensity;
+                        changed(val) => { root.glow-intensity = val; root.config-changed(); }
                     }
                 }
-
-                HorizontalLayout {
-                    alignment: space-between;
-                    Text { text: "Orbit Velocity"; color: #a1a1aa; font-size: 13px; }
-                    Text { text: Math.round(root.tracer-speed * 100) + "%"; color: #f4f4f5; font-size: 13px; }
-                }
-                Slider {
-                    minimum: 0.2;
-                    maximum: 3.0;
-                    value: root.tracer-speed;
-                    changed(val) => { root.tracer-speed = val; root.config-changed(); }
-                }
-
-                HorizontalLayout {
-                    alignment: space-between;
-                    Text { text: "Comet Tail Length"; color: #a1a1aa; font-size: 13px; }
-                    Text { text: Math.round(root.tracer-tail * 100) + "%"; color: #f4f4f5; font-size: 13px; }
-                }
-                Slider {
-                    minimum: 0.1;
-                    maximum: 1.0;
-                    value: root.tracer-tail;
-                    changed(val) => { root.tracer-tail = val; root.config-changed(); }
-                }
             }
-        }
 
-        // Footer Actions
-        HorizontalLayout {
-            alignment: end;
-            spacing: 12px;
+            // Footer Actions
+            HorizontalLayout {
+                alignment: end;
+                spacing: 12px;
 
-            Button {
-                text: "Apply & Close";
-                clicked => { root.close-window(); }
+                Button {
+                    text: "Apply & Close";
+                    clicked => { root.close-window(); }
+                }
             }
         }
     }

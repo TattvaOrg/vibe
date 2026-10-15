@@ -7,7 +7,7 @@ use anyhow::{Context, Result};
 use notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use serde::{Deserialize, Serialize};
 
-use crate::types::{AnimationMode, BeatSensitivity, ColorSource};
+use crate::types::{AnimationMode, BeatSensitivity, ColorSource, TracerDirection, TracerStyle};
 
 /// Top-level configuration persisted in `~/.config/vibe/config.toml`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,6 +35,26 @@ pub struct VibConfig {
     /// Length of the tracer tail relative to the perimeter (0.15–1.0).
     #[serde(default = "default_tracer_tail_length")]
     pub tracer_tail_length: f32,
+
+    /// Tracer movement direction (Clockwise or CounterClockwise).
+    #[serde(default = "default_tracer_direction")]
+    pub tracer_direction: TracerDirection,
+
+    /// Width/thickness of the moving tracer line in pixels (1.0–24.0).
+    #[serde(default = "default_tracer_width")]
+    pub tracer_width: f32,
+
+    /// Bloom / glow intensity around the moving tracer line (0.0–1.0).
+    #[serde(default = "default_tracer_glow")]
+    pub tracer_glow: f32,
+
+    /// Visual texture / style of the tracer line (AuroraWave, NeonGlow, ElectricPulse).
+    #[serde(default = "default_tracer_style")]
+    pub tracer_style: TracerStyle,
+
+    /// Selected circular preset color index (0 = Album Art, 1 = Emerald, etc.).
+    #[serde(default = "default_preset_color_index")]
+    pub preset_color_index: u32,
 
     /// Beat-detection sensitivity preset.
     #[serde(default)]
@@ -89,6 +109,11 @@ fn default_glow_intensity() -> f32 { 0.7 }
 fn default_tracer_enabled() -> bool { true }
 fn default_tracer_speed() -> f32 { 1.0 }
 fn default_tracer_tail_length() -> f32 { 0.4 }
+fn default_tracer_direction() -> TracerDirection { TracerDirection::Clockwise }
+fn default_tracer_width() -> f32 { 6.0 }
+fn default_tracer_glow() -> f32 { 0.7 }
+fn default_tracer_style() -> TracerStyle { TracerStyle::AuroraWave }
+fn default_preset_color_index() -> u32 { 0 }
 fn default_primary_color() -> [f32; 3] { [0.4, 0.2, 0.8] }
 fn default_secondary_color() -> [f32; 3] { [0.2, 0.6, 0.9] }
 fn default_color_weight() -> f32 { 0.6 }
@@ -107,6 +132,11 @@ impl Default for VibConfig {
             tracer_enabled: default_tracer_enabled(),
             tracer_speed: default_tracer_speed(),
             tracer_tail_length: default_tracer_tail_length(),
+            tracer_direction: default_tracer_direction(),
+            tracer_width: default_tracer_width(),
+            tracer_glow: default_tracer_glow(),
+            tracer_style: default_tracer_style(),
+            preset_color_index: default_preset_color_index(),
             beat_sensitivity: BeatSensitivity::default(),
             animation_mode: AnimationMode::default(),
             color_source: ColorSource::default(),

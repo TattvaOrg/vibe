@@ -3,7 +3,7 @@ use std::time::Instant;
 use anyhow::{Context, Result};
 use glow::HasContext;
 use vibe_core::config::VibConfig;
-use vibe_core::types::{AnimationMode, AudioState, Palette};
+use vibe_core::types::{AnimationMode, AudioState, Palette, TracerDirection, TracerStyle};
 
 use crate::shader::{compile_shader, link_program, FRAGMENT_SHADER_SRC, VERTEX_SHADER_SRC};
 
@@ -87,11 +87,17 @@ impl OverlayRenderer {
         self.last_frame = now;
         let elapsed = now.duration_since(self.start_time).as_secs_f32();
 
-        // Advance white tracer beam along the perimeter
-        // Acceleration kicks in when bass transients trigger
+        // Advance tracer beam along the perimeter according to direction
         let beat_multiplier = 1.0 + (audio.bass_energy * 1.5);
         let speed = (config.tracer_speed * 0.25) * beat_multiplier;
-        self.tracer_position = (self.tracer_position + speed * dt).fract();
+        match config.tracer_direction {
+            TracerDirection::Clockwise => {
+                self.tracer_position = (self.tracer_position + speed * dt).fract();
+            }
+            TracerDirection::CounterClockwise => {
+                self.tracer_position = (self.tracer_position - speed * dt).rem_euclid(1.0);
+            }
+        }
 
         unsafe {
             self.gl.viewport(0, 0, width as i32, height as i32);
@@ -119,6 +125,21 @@ impl OverlayRenderer {
             self.set_uniform_1f("u_tracer_position", self.tracer_position);
             self.set_uniform_1f("u_tracer_tail", config.tracer_tail_length);
             self.set_uniform_1f("u_beat_energy", if audio.beat { 1.0 } else { audio.bass_energy });
+
+            let dir_val = match config.tracer_direction {
+                TracerDirection::Clockwise => 0,
+                TracerDirection::CounterClockwise => 1,
+            };
+            self.set_uniform_1i("u_tracer_direction", dir_val);
+            self.set_uniform_1f("u_tracer_width", config.tracer_width);
+            self.set_uniform_1f("u_tracer_glow", config.tracer_glow);
+
+            let style_val = match config.tracer_style {
+                TracerStyle::AuroraWave => 0,
+                TracerStyle::NeonGlow => 1,
+                TracerStyle::ElectricPulse => 2,
+            };
+            self.set_uniform_1i("u_tracer_style", style_val);
 
             let mode_val = match config.animation_mode {
                 AnimationMode::OrbitTracer => 0,

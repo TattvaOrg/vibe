@@ -4,7 +4,7 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 use vibe_core::config::{ConfigWatcher, VibConfig};
 use vibe_core::state::AppState;
-use vibe_core::types::AnimationMode;
+use vibe_core::types::{AnimationMode, TracerDirection};
 
 #[derive(Parser, Debug)]
 #[command(name = "vibe")]
@@ -24,6 +24,8 @@ enum Commands {
     Toggle,
     /// Cycle to the next animation mode
     NextMode,
+    /// Reverse the tracer orbit direction (Clockwise <-> CounterClockwise)
+    Reverse,
 }
 
 #[tokio::main]
@@ -81,6 +83,15 @@ async fn main() -> Result<()> {
             };
             cfg.save()?;
             log::info!("Switched animation mode to: {:?}", cfg.animation_mode);
+        }
+        Commands::Reverse => {
+            let mut cfg = VibConfig::load().unwrap_or_default();
+            cfg.tracer_direction = match cfg.tracer_direction {
+                TracerDirection::Clockwise => TracerDirection::CounterClockwise,
+                TracerDirection::CounterClockwise => TracerDirection::Clockwise,
+            };
+            cfg.save()?;
+            log::info!("Reversed tracer direction to: {:?}", cfg.tracer_direction);
         }
     }
 
