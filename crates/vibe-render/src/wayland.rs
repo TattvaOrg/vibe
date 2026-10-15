@@ -154,9 +154,53 @@ smithay_client_toolkit::delegate_output!(VibeWaylandState);
 smithay_client_toolkit::delegate_layer!(VibeWaylandState);
 smithay_client_toolkit::delegate_registry!(VibeWaylandState);
 
-unsafe extern "C" {
-    fn wl_display_connect(name: *const std::ffi::c_char) -> *mut std::ffi::c_void;
-    fn wl_display_disconnect(display: *mut std::ffi::c_void);
+/// Dynamically loaded libwayland-client functions to avoid link-time errors.
+struct WaylandClientDynamic {
+    _lib: libloading::Library,
+    disconnect: unsafe extern "C" fn(*mut std::ffi::c_void),
+    display_ptr: *mut std::ffi::c_void,
+}
+
+impl WaylandClientDynamic {
+    fn try_connect() -> Option<Self> {
+        let lib_names = ["libwayland-client.so.0", "libwayland-client.so"];
+        for name in lib_names {
+            if let Ok(lib) = unsafe { libloading::Library::new(name) } {
+                let connect_fn: Result<
+                    libloading::Symbol<unsafe extern "C" fn(*const std::ffi::c_char) -> *mut std::ffi::c_void>,
+                    _,
+                > = unsafe { lib.get(b"wl_display_connect\0") };
+
+                let disconnect_fn: Result<
+                    libloading::Symbol<unsafe extern "C" fn(*mut std::ffi::c_void)>,
+                    _,
+                > = unsafe { lib.get(b"wl_display_disconnect\0") };
+
+                if let (Ok(connect), Ok(disconnect)) = (connect_fn, disconnect_fn) {
+                    let ptr = unsafe { connect(std::ptr::null()) };
+                    if !ptr.is_null() {
+                        let disconnect_fn_ptr = *disconnect;
+                        return Some(Self {
+                            _lib: lib,
+                            disconnect: disconnect_fn_ptr,
+                            display_ptr: ptr,
+                        });
+                    }
+                }
+            }
+        }
+        None
+    }
+}
+
+impl Drop for WaylandClientDynamic {
+    fn drop(&mut self) {
+        if !self.display_ptr.is_null() {
+            unsafe {
+                (self.disconnect)(self.display_ptr);
+            }
+        }
+    }
 }
 
 /// Manages the Wayland display, layer-shell surface, and EGL context.
@@ -165,7 +209,7 @@ pub struct WaylandOverlay {
     egl_display: egl::Display,
     egl_context: egl::Context,
     egl_surface: egl::Surface,
-    raw_wl_display: *mut std::ffi::c_void,
+    _dynamic_client: Option<WaylandClientDynamic>,
     _wl_egl_surface: Option<WlEglSurface>,
     _layer_surface: Option<LayerSurface>,
     event_queue: Option<wayland_client::EventQueue<VibeWaylandState>>,
@@ -184,11 +228,11 @@ impl WaylandOverlay {
         };
         let egl_instance = Arc::new(egl_instance);
 
-        // Connect directly to Wayland display socket if available
-        let raw_wl_disp = unsafe { wl_display_connect(std::ptr::null()) };
+        // Dynamically connect to Wayland display socket if available
+        let dynamic_client = WaylandClientDynamic::try_connect();
 
-        let egl_display = if !raw_wl_disp.is_null() {
-            unsafe { egl_instance.get_display(raw_wl_disp as *mut _) }
+        let egl_display = if let Some(ref client) = dynamic_client {
+            unsafe { egl_instance.get_display(client.display_ptr as *mut _) }
                 .context("Failed to get EGL display for Wayland")?
         } else {
             unsafe { egl_instance.get_display(egl::DEFAULT_DISPLAY) }
@@ -365,7 +409,7 @@ impl WaylandOverlay {
             egl_display,
             egl_context,
             egl_surface,
-            raw_wl_display: raw_wl_disp,
+            _dynamic_client: dynamic_client,
             _wl_egl_surface: created_wl_egl,
             _layer_surface: created_layer,
             event_queue: created_queue,
@@ -413,10 +457,5 @@ impl Drop for WaylandOverlay {
         let _ = self.egl_instance.destroy_surface(self.egl_display, self.egl_surface);
         let _ = self.egl_instance.destroy_context(self.egl_display, self.egl_context);
         let _ = self.egl_instance.terminate(self.egl_display);
-        if !self.raw_wl_display.is_null() {
-            unsafe {
-                wl_display_disconnect(self.raw_wl_display);
-            }
-        }
     }
 }

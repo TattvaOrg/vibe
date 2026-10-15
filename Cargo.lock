@@ -5410,6 +5410,7 @@ dependencies = [
  "anyhow",
  "glow 0.16.0",
  "khronos-egl",
+ "libloading",
  "log",
  "raw-window-handle",
  "smithay-client-toolkit",
