@@ -2,7 +2,7 @@
 set -e
 
 REPO="TattvaOrg/vibe"
-DEFAULT_VERSION="v0.0.2"
+DEFAULT_VERSION="v0.0.3"
 INSTALL_DIR="${HOME}/.local/bin"
 DESKTOP_DIR="${HOME}/.local/share/applications"
 ICON_DIR="${HOME}/.local/share/icons/hicolor/scalable/apps"
